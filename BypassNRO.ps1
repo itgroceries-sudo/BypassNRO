@@ -4,7 +4,6 @@ chcp 65001 >nul
 mode con:cols=98 lines=28
 title ITG FastOOBE ^& Post-Setup Tweaks by IT Groceries Co.,ltd.
 
-:: บังคับอ่านเป็น UTF8 เพื่อรองรับการดับเบิลคลิกไฟล์ในเครื่อง
 powershell -noprofile -c "$param='%*';$ScriptPath='%~f0';iex((Get-Content -LiteralPath '%~f0' -Encoding UTF8 -Raw))"
 exit /b
 #>
@@ -15,8 +14,8 @@ exit /b
 
 $TempCMD = "$env:TEMP\ITG_FastOOBE.cmd"
 
-# ใช้ @' ... '@ (Single Quotes) เพื่อป้องกัน PowerShell สับสนกับเครื่องหมาย ! และ % ของ Batch
 $BatchCode = @'
+:: [BOM Catcher]
 @echo off
 setlocal EnableDelayedExpansion
 chcp 65001 >nul
@@ -142,7 +141,7 @@ if /i "!opt!"=="D" (
 ) else if /i "!opt!"=="O" (
     set "SETUP_MODE=ONLINE"
     echo/
-    echo(  !b!!cg![INFO] Proceeding with Online Mode. ^(No Local User will be created^)!0!
+    echo(  !b!!cg![INFO] Proceeding with Online Mode. (No Local User will be created)!0!
 ) else if /i "!opt!"=="A" (
     set "SETUP_MODE=LOCAL"
     echo/
@@ -226,13 +225,16 @@ rem ----------------------------------------------------------------------------
 if "!SETUP_MODE!"=="LOCAL" (
     echo [PROCESS] Creating Account ^& Enforcing Auto-Login...
     
+    rem Create User with explicit empty password
     net user "!NEW_USER!" "" /add >nul 2>&1
     net localgroup Administrators "!NEW_USER!" /add >nul 2>&1
     
+    rem Set password to never expire
     powershell -NoProfile -Command "Set-LocalUser -Name '!NEW_USER!' -PasswordNeverExpires $true" >nul 2>&1
     wmic useraccount where "name='!NEW_USER!'" set PasswordExpires=FALSE >nul 2>&1
     net accounts /maxpwage:unlimited >nul 2>&1
 
+    rem Set DefaultPassword to empty to prevent duplicate Ghost Profile
     reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v AutoAdminLogon /t REG_SZ /d "1" /f >nul 2>&1
     reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultUserName /t REG_SZ /d "!NEW_USER!" /f >nul 2>&1
     reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultPassword /t REG_SZ /d "" /f >nul 2>&1
@@ -240,6 +242,7 @@ if "!SETUP_MODE!"=="LOCAL" (
     echo [PROCESS] Skipping Local User Creation ^(Online Mode^)...
 )
 
+rem Cleanup defaultuser0
 net user defaultuser0 /delete >nul 2>&1
 if exist "C:\Users\defaultuser0" rmdir /s /q "C:\Users\defaultuser0" >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v defaultuser0 /t REG_DWORD /d 0 /f >nul 2>&1
@@ -267,12 +270,9 @@ pause
 exit
 '@
 
-# เขียนไฟล์ Batch ด้วย UTF-8 BOM
 $Utf8WithBom = New-Object System.Text.UTF8Encoding($True)
 [System.IO.File]::WriteAllText($TempCMD, $BatchCode, $Utf8WithBom)
 
-# สั่งรัน CMD และรอจนกว่าจะปิด
 Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$TempCMD`"" -Wait
 
-# ลบไฟล์ทิ้งหลังใช้งานเสร็จ
 Remove-Item -Path $TempCMD -Force -ErrorAction SilentlyContinue
