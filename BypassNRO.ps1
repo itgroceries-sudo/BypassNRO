@@ -1,10 +1,28 @@
-<# :
+<# : hybrid batch + powershell script
+@echo off
+chcp 65001 >nul
+mode con:cols=98 lines=28
+title ITG FastOOBE ^& Post-Setup Tweaks by IT Groceries Co.,ltd.
+
+:: บังคับอ่านเป็น UTF8 เพื่อรองรับการดับเบิลคลิกไฟล์ในเครื่อง
+powershell -noprofile -c "$param='%*';$ScriptPath='%~f0';iex((Get-Content -LiteralPath '%~f0' -Encoding UTF8 -Raw))"
+exit /b
+#>
+
+# =========================================================
+#  ITG FastOOBE & Post-Setup Tweaks (Hybrid Edition)
+# =========================================================
+
+$TempCMD = "$env:TEMP\ITG_FastOOBE.cmd"
+
+# ใช้ @' ... '@ (Single Quotes) เพื่อป้องกัน PowerShell สับสนกับเครื่องหมาย ! และ % ของ Batch
+$BatchCode = @'
 @echo off
 setlocal EnableDelayedExpansion
 chcp 65001 >nul
 
 rem ------------------------------------------------------------------------------
-rem [ ZONE 1: UAC GATEKEEPER ] ด่านตรวจสิทธิ์ Admin
+rem [ ZONE 1: UAC GATEKEEPER ]
 rem ------------------------------------------------------------------------------
 reg query "HKLM\System\CurrentControlSet\Control\MiniNT" >nul 2>&1
 if !errorlevel! neq 0 (
@@ -16,7 +34,7 @@ if !errorlevel! neq 0 (
 )
 
 rem ------------------------------------------------------------------------------
-rem [ ZONE 2: INITIALIZE COLORS ] โหลดเอนจินสี ANSI สไตล์ StartNet
+rem [ ZONE 2: INITIALIZE COLORS ]
 rem ------------------------------------------------------------------------------
 for /F "tokens=1,2 delims=#" %%a in ('"prompt #$H#$E# & echo on & for %%b in (1) do rem"') do set "nhcolor=%%b"
 set "0=!nhcolor![0m" & set "b=!nhcolor![1m" & set "_=!nhcolor![4m" & set "_0=!nhcolor![24m"
@@ -27,7 +45,7 @@ set "bgb=!nhcolor![44m" & set "bgm=!nhcolor![45m" & set "bgc=!nhcolor![46m" & se
 set "sbgm=!nhcolor![105m"
 
 rem ------------------------------------------------------------------------------
-rem [ ZONE 3: HARDWARE SCANNER ] ระบบสแกนฮาร์ดแวร์ฉบับเร่งรัด
+rem [ ZONE 3: HARDWARE SCANNER ]
 rem ------------------------------------------------------------------------------
 set "SYS_CPU="
 for /f "tokens=2*" %%A in ('reg query "HKLM\HARDWARE\DESCRIPTION\System\CentralProcessor\0" /v ProcessorNameString 2^>nul ^| find /i "REG_SZ"') do set "SYS_CPU=%%B"
@@ -66,7 +84,7 @@ if defined SYS_VGA ( set "SYS_VGA=!SYS_VGA:(R)=!" & set "SYS_VGA=!SYS_VGA: Corpo
 if "!SYS_VGA!"=="" set "SYS_VGA=Unknown VGA"
 
 rem ------------------------------------------------------------------------------
-rem [ ZONE 4: UI & USER INPUT ] ส่วนแสดงผลกราฟิก
+rem [ ZONE 4: UI & USER INPUT ]
 rem ------------------------------------------------------------------------------
 :MAIN_MENU
 cls
@@ -137,37 +155,31 @@ if /i "!opt!"=="D" (
 )
 
 rem ------------------------------------------------------------------------------
-rem [ ZONE 5: SYSTEM WIDE REGISTRY & LOCALE ] (ทำงานระดับ OS - HKLM)
+rem [ ZONE 5: SYSTEM WIDE REGISTRY & LOCALE ]
 rem ------------------------------------------------------------------------------
 echo/
 echo [PROCESS] Configuring System Region, TimeZone ^& Network Sharing...
 
-rem [25H2 SMB FIX]
 reg add "HKLM\SYSTEM\CurrentControlSet\Services\LanmanWorkstation\Parameters" /v "AllowInsecureGuestAuth" /t REG_DWORD /d 1 /f >nul 2>&1
 reg add "HKLM\SYSTEM\CurrentControlSet\Services\LanmanWorkstation\Parameters" /v "RequireSecuritySignature" /t REG_DWORD /d 0 /f >nul 2>&1
 
-rem [MAINTENANCE]
 schtasks /delete /tn "\Microsoft\Windows\Servicing\OOBEFodSetup" /f >nul 2>&1
 
-rem [System Locale]
 powershell -NoProfile -Command "Set-WinSystemLocale th-TH; Set-WinHomeLocation -GeoId 227" >nul 2>&1
 tzutil /s "SE Asia Standard Time" >nul 2>&1
 
-rem [System Tweaks]
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\BitLocker" /v "PreventDeviceEncryption" /t REG_DWORD /d 1 /f >nul 2>&1
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\Network\NewNetworkWindowOff" /v "" /f >nul 2>&1
 label C: OS Windows (x64) >nul 2>&1
 
-rem [OOBE & Privacy]
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE" /v BypassNRO /t reg_dword /d 1 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\OOBE" /v DisablePrivacyExperience /t REG_DWORD /d 1 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v EnableFirstLogonAnimation /t reg_dword /d 0 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v EnableFirstLogonAnimation /t reg_dword /d 0 /f >nul 2>&1
 
 rem ------------------------------------------------------------------------------
-rem [ ZONE 6: DYNAMIC USER INJECTION ] (รองรับทั้ง OOBE และ Desktop)
+rem [ ZONE 6: DYNAMIC USER INJECTION ]
 rem ------------------------------------------------------------------------------
-rem --- กำหนดเป้าหมาย Registry ตามโหมดที่เลือก ---
 if "!SETUP_MODE!"=="DESKTOP" (
     set "REG_ROOT=HKCU"
     echo [PROCESS] Applying Desktop Icons ^& UI Tweaks to CURRENT USER...
@@ -177,13 +189,11 @@ if "!SETUP_MODE!"=="DESKTOP" (
     reg load "HKU\DefUser" "C:\Users\Default\NTUSER.DAT" >nul 2>&1
 )
 
-rem [Desktop Icons] 
 FOR %%L IN ({5399E694-6CE5-4D6C-8FCE-1D8870FDCBA0} {F02C1A0D-BE21-4350-88B0-7367FC96EF3C} {20D04FE0-3AEA-1069-A2D8-08002B30309D} {59031a47-3f72-44a7-89c5-5595fe6b30ee}) DO (
     reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel" /v %%L /t REG_DWORD /d 0 /f >nul 2>&1
     reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\ClassicStartMenu" /v %%L /t REG_DWORD /d 0 /f >nul 2>&1
 )
 
-rem [Explorer & UI] 
 reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v LaunchTo /t reg_dword /d 1 /f >nul 2>&1
 reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v ShowSecondsInSystemClock /t REG_DWORD /d 1 /f >nul 2>&1
 reg add "!REG_ROOT!\Control Panel\International" /v sShortDate /t reg_sz /d "ddd/d/MMM" /f >nul 2>&1
@@ -191,11 +201,9 @@ reg add "!REG_ROOT!\Software\Policies\Microsoft\Windows\WindowsCopilot" /v TurnO
 reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Run" /v OneDriveSetup /d "" /f >nul 2>&1
 reg add "!REG_ROOT!\Software\Microsoft\Edge" /v HideFirstRunExperience /t REG_DWORD /d 1 /f >nul 2>&1
 
-rem [ANNOYANCES] 
 reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v SubscribedContent-310093Enabled /t reg_dword /d 0 /f >nul 2>&1
 reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v SubscribedContent-338389Enabled /t reg_dword /d 0 /f >nul 2>&1
 
-rem [FIRST LOGON SCRIPT]
 set "RUNONCE_FILE=C:\Windows\ITG_LangFix.cmd"
 (
     echo @echo off
@@ -210,25 +218,21 @@ set "RUNONCE_FILE=C:\Windows\ITG_LangFix.cmd"
 
 reg add "!REG_ROOT!\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce" /v "ITG_Init" /t REG_SZ /d "!RUNONCE_FILE!" /f >nul 2>&1
 
-rem ปลดล็อก Registry หากไม่ใช่โหมด Desktop
 if not "!SETUP_MODE!"=="DESKTOP" reg unload "HKU\DefUser" >nul 2>&1
 
 rem ------------------------------------------------------------------------------
-rem [ ZONE 7: USER CREATION & AUTO-LOGIN ] (เฉพาะโหมด LOCAL)
+rem [ ZONE 7: USER CREATION & AUTO-LOGIN ] 
 rem ------------------------------------------------------------------------------
 if "!SETUP_MODE!"=="LOCAL" (
     echo [PROCESS] Creating Account ^& Enforcing Auto-Login...
     
-    rem 1. สร้าง User โดยระบุรหัสผ่านให้เป็น "ค่าว่าง" อย่างชัดเจน
     net user "!NEW_USER!" "" /add >nul 2>&1
     net localgroup Administrators "!NEW_USER!" /add >nul 2>&1
     
-    rem 2. [แก้ปัญหารหัสหมดอายุ] ปลดล็อกให้รหัสผ่านไม่มีวันหมดอายุ 
     powershell -NoProfile -Command "Set-LocalUser -Name '!NEW_USER!' -PasswordNeverExpires $true" >nul 2>&1
     wmic useraccount where "name='!NEW_USER!'" set PasswordExpires=FALSE >nul 2>&1
     net accounts /maxpwage:unlimited >nul 2>&1
 
-    rem 3. [แก้ปัญหาชื่อซ้ำ 2 ชื่อ] บังคับใส่ DefaultPassword เป็นค่าว่างเสมอ
     reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v AutoAdminLogon /t REG_SZ /d "1" /f >nul 2>&1
     reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultUserName /t REG_SZ /d "!NEW_USER!" /f >nul 2>&1
     reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultPassword /t REG_SZ /d "" /f >nul 2>&1
@@ -236,13 +240,12 @@ if "!SETUP_MODE!"=="LOCAL" (
     echo [PROCESS] Skipping Local User Creation ^(Online Mode^)...
 )
 
-rem กวาดขยะ defaultuser0 ทิ้งเสมอ
 net user defaultuser0 /delete >nul 2>&1
 if exist "C:\Users\defaultuser0" rmdir /s /q "C:\Users\defaultuser0" >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v defaultuser0 /t REG_DWORD /d 0 /f >nul 2>&1
 
 rem ------------------------------------------------------------------------------
-rem [ ZONE 8: THE MAGIC EXECUTION ] (แยกทาง Desktop vs OOBE)
+rem [ ZONE 8: THE MAGIC EXECUTION ]
 rem ------------------------------------------------------------------------------
 echo/
 
@@ -262,9 +265,14 @@ shutdown /r /t 30 /f /c "ITG FastOOBE: Finalizing setup. System will boot to Des
 echo [DONE] Process initiated. You can close this window or wait for reboot.
 pause
 exit
-#>
-$BatchCode = ((Get-Content -LiteralPath $MyInvocation.MyCommand.Path) -join "`n") -replace '(?s)\A.*?\n(.*)\n#>\z', '$1'
-$TempBat = "$env:TEMP\FastOOBE.bat"
-[System.IO.File]::WriteAllText($TempBat, $BatchCode, [System.Text.Encoding]::UTF8)
-Start-Process -FilePath cmd.exe -ArgumentList "/c `"$TempBat`"" -Wait
-Remove-Item -Path $TempBat -Force -ErrorAction SilentlyContinue
+'@
+
+# เขียนไฟล์ Batch ด้วย UTF-8 BOM
+$Utf8WithBom = New-Object System.Text.UTF8Encoding($True)
+[System.IO.File]::WriteAllText($TempCMD, $BatchCode, $Utf8WithBom)
+
+# สั่งรัน CMD และรอจนกว่าจะปิด
+Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$TempCMD`"" -Wait
+
+# ลบไฟล์ทิ้งหลังใช้งานเสร็จ
+Remove-Item -Path $TempCMD -Force -ErrorAction SilentlyContinue
