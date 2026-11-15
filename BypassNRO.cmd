@@ -1,10 +1,8 @@
+<# :
 @echo off
 setlocal EnableDelayedExpansion
 chcp 65001 >nul
 
-rem ------------------------------------------------------------------------------
-rem [ ZONE 1: UAC GATEKEEPER ] ด่านตรวจสิทธิ์ Admin
-rem ------------------------------------------------------------------------------
 reg query "HKLM\System\CurrentControlSet\Control\MiniNT" >nul 2>&1
 if !errorlevel! neq 0 (
     fsutil dirty query %systemdrive% >nul 2>&1
@@ -261,4 +259,10 @@ shutdown /r /t 30 /f /c "ITG FastOOBE: Finalizing setup. System will boot to Des
 
 echo [DONE] Process initiated. You can close this window or wait for reboot.
 pause
-exit
+exit /b
+#>
+$BatchScript = [System.IO.File]::ReadAllText($MyInvocation.MyCommand.Path)
+$TempBat = "$env:TEMP\FastOOBE.bat"
+$BatchScript -replace "(?s)<# :.*|.*#>", "" | Out-File -FilePath $TempBat -Encoding utf8
+Start-Process -FilePath cmd.exe -ArgumentList "/c `"$TempBat`"" -Wait
+Remove-Item -Path $TempBat -Force -ErrorAction SilentlyContinue
