@@ -113,7 +113,7 @@ echo/
 echo(      !bgr!!cw! [A] Local Account Mode (OOBE)       !0!     !bgw!!ck! [M] Device Manager                    !0!
 echo(      !bgb!!cw! [O] Online Account Mode (OOBE)      !0!     !bgw!!ck! [K] Disk Management                   !0!
 echo(      !bgw!!ck! [D] Desktop Tweaks (Current User)   !0!     !bgw!!ck! [U] User Accounts (netplwiz)          !0!
-echo(      !b!!cr! [E] Exit Program                      !0!     !bgw!!ck! [R] Registry Editor                   !0!
+echo(      !b!!cr! [E] Exit Program                      !0!   !bgw!!ck! [R] Registry Editor                   !0!
 echo/
 echo( !b!!cw!-----------------------------------------------------------------------------------------------!0!
 echo( !b!!cr!===============================================================================================!0!
