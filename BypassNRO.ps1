@@ -274,19 +274,27 @@ if "!SETUP_MODE!"=="DESKTOP" (
     exit /b
 )
 
-echo !b!!cy![FINISHING] Triggering OOBE Engine... Please wait for 30s timer.!0!
+echo !b!!cy![FINISHING] Finalizing OOBE State ^& Scheduling Reboot...!0!
 echo/
-start /b C:\Windows\System32\oobe\msoobe.exe
 
-echo [INFO] Background processes initiated.
-echo [INFO] Preparing to schedule restart in 30 seconds...
-ping 127.0.0.1 -n 5 >nul
+rem 1. แจ้งระบบว่าขั้นตอน OOBE เสร็จสมบูรณ์แล้ว (ป้องกันการวนลูปกลับมาหน้า OOBE อีก)
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Setup\State" /v "ImageState" /t REG_SZ /d "IMAGE_STATE_COMPLETE" /f >nul 2>&1
+reg add "HKLM\SYSTEM\Setup" /v "OOBEInProgress" /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SYSTEM\Setup" /v "SetupType" /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SYSTEM\Setup" /v "SystemSetupInProgress" /t REG_DWORD /d 0 /f >nul 2>&1
 
-shutdown /r /t 30 /f /c "ITG FastOOBE: Finalizing setup. System will boot to Desktop automatically."
+rem 2. หน่วงเวลา 3 วินาทีให้ Registry เขียนลงดิสก์ให้สมบูรณ์
+ping 127.0.0.1 -n 4 >nul
 
-echo/
-echo !b!!scg![DONE] Process initiated.!0! !cw!You can close this window or wait for reboot.!0!
-echo/
+rem 3. สั่งรีสตาร์ทด้วย Path เต็ม (นับถอยหลัง 10 วินาที)
+echo !b!!scg![DONE] Rebooting to Desktop in 10 seconds... !0!
+"%SystemRoot%\System32\shutdown.exe" /r /t 10 /f /c "ITG FastOOBE: Setup Complete. Booting to Desktop."
+
+rem กรณีคำสั่ง shutdown ด้านบนถูกบล็อกในบาง Build ให้ใช้ PowerShell บังคับรีสตาร์ทสำรอง
+if !errorlevel! neq 0 (
+    powershell -NoProfile -Command "Restart-Computer -Force"
+)
+
 pause
 exit /b
 '@
