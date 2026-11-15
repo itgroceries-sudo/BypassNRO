@@ -113,7 +113,7 @@ echo/
 echo(      !bgr!!cw! [A] Local Account Mode (OOBE)       !0!     !bgw!!ck! [M] Device Manager                    !0!
 echo(      !bgb!!cw! [O] Online Account Mode (OOBE)      !0!     !bgw!!ck! [K] Disk Management                   !0!
 echo(      !bgw!!ck! [D] Desktop Tweaks (Current User)   !0!     !bgw!!ck! [U] User Accounts (netplwiz)          !0!
-echo(      !b!!cr! [E] Exit Program                      !0!   !bgw!!ck! [R] Registry Editor                   !0!
+echo(      !b!!cr! [E] Exit Program                      !0!     !bgw!!ck! [R] Registry Editor                   !0!
 echo/
 echo( !b!!cw!-----------------------------------------------------------------------------------------------!0!
 echo( !b!!cr!===============================================================================================!0!
@@ -133,26 +133,35 @@ if /i "!opt!"=="K" start "" diskmgmt.msc & goto MAIN_MENU
 if /i "!opt!"=="U" start "" netplwiz & goto MAIN_MENU
 if /i "!opt!"=="R" start "" regedit & goto MAIN_MENU
 
-rem --- [ SETUP MODES ] ---
-if /i "!opt!"=="D" (
-    set "SETUP_MODE=DESKTOP"
-    echo/
-    echo(  !b!!cm![INFO] Desktop Mode selected. Tweaks will apply to CURRENT USER.!0!
-) else if /i "!opt!"=="O" (
-    set "SETUP_MODE=ONLINE"
-    echo/
-    echo(  !b!!cg![INFO] Proceeding with Online Mode. (No Local User will be created)!0!
-) else if /i "!opt!"=="A" (
-    set "SETUP_MODE=LOCAL"
-    echo/
-    set "NEW_USER="
-    <nul set /p="!b!!cg!   Enter Local Account Name : !cw!!b!"
-    set /p "NEW_USER="
-    if "!NEW_USER!"=="" set "NEW_USER=User"
-) else (
-    goto MAIN_MENU
-)
+rem --- [ SETUP MODES - FLATTENED LOGIC ] ---
+if /i "!opt!"=="D" goto MODE_DESKTOP
+if /i "!opt!"=="O" goto MODE_ONLINE
+if /i "!opt!"=="A" goto MODE_LOCAL
+goto MAIN_MENU
 
+:MODE_DESKTOP
+set "SETUP_MODE=DESKTOP"
+echo/
+echo(  !b!!cm![INFO] Desktop Mode selected. Tweaks will apply to CURRENT USER.!0!
+goto RUN_SETUP
+
+:MODE_ONLINE
+set "SETUP_MODE=ONLINE"
+echo/
+echo(  !b!!cg![INFO] Proceeding with Online Mode. (No Local User will be created)!0!
+goto RUN_SETUP
+
+:MODE_LOCAL
+set "SETUP_MODE=LOCAL"
+echo/
+set "NEW_USER="
+<nul set /p="!b!!cg!   Enter Local Account Name : !cw!!b!"
+set /p "NEW_USER="
+if "!NEW_USER!"=="" set "NEW_USER=User"
+goto RUN_SETUP
+
+
+:RUN_SETUP
 rem ------------------------------------------------------------------------------
 rem [ ZONE 5: SYSTEM WIDE REGISTRY & LOCALE ]
 rem ------------------------------------------------------------------------------
@@ -182,7 +191,8 @@ rem ----------------------------------------------------------------------------
 if "!SETUP_MODE!"=="DESKTOP" (
     set "REG_ROOT=HKCU"
     echo [PROCESS] Applying Desktop Icons ^& UI Tweaks to CURRENT USER...
-) else (
+)
+if not "!SETUP_MODE!"=="DESKTOP" (
     set "REG_ROOT=HKU\DefUser"
     echo [PROCESS] Injecting Desktop Icons ^& UI Tweaks to DEFAULT USER...
     reg load "HKU\DefUser" "C:\Users\Default\NTUSER.DAT" >nul 2>&1
@@ -222,26 +232,30 @@ if not "!SETUP_MODE!"=="DESKTOP" reg unload "HKU\DefUser" >nul 2>&1
 rem ------------------------------------------------------------------------------
 rem [ ZONE 7: USER CREATION & AUTO-LOGIN ] 
 rem ------------------------------------------------------------------------------
-if "!SETUP_MODE!"=="LOCAL" (
-    echo [PROCESS] Creating Account ^& Enforcing Auto-Login...
-    
-    rem Create User with explicit empty password
-    net user "!NEW_USER!" "" /add >nul 2>&1
-    net localgroup Administrators "!NEW_USER!" /add >nul 2>&1
-    
-    rem Set password to never expire
-    powershell -NoProfile -Command "Set-LocalUser -Name '!NEW_USER!' -PasswordNeverExpires $true" >nul 2>&1
-    wmic useraccount where "name='!NEW_USER!'" set PasswordExpires=FALSE >nul 2>&1
-    net accounts /maxpwage:unlimited >nul 2>&1
+if not "!SETUP_MODE!"=="LOCAL" goto SKIP_LOCAL
 
-    rem Set DefaultPassword to empty to prevent duplicate Ghost Profile
-    reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v AutoAdminLogon /t REG_SZ /d "1" /f >nul 2>&1
-    reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultUserName /t REG_SZ /d "!NEW_USER!" /f >nul 2>&1
-    reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultPassword /t REG_SZ /d "" /f >nul 2>&1
-) else if "!SETUP_MODE!"=="ONLINE" (
-    echo [PROCESS] Skipping Local User Creation ^(Online Mode^)...
-)
+echo [PROCESS] Creating Account ^& Enforcing Auto-Login...
+    
+rem Create User with explicit empty password
+net user "!NEW_USER!" "" /add >nul 2>&1
+net localgroup Administrators "!NEW_USER!" /add >nul 2>&1
+    
+rem Set password to never expire
+powershell -NoProfile -Command "Set-LocalUser -Name '!NEW_USER!' -PasswordNeverExpires $true" >nul 2>&1
+wmic useraccount where "name='!NEW_USER!'" set PasswordExpires=FALSE >nul 2>&1
+net accounts /maxpwage:unlimited >nul 2>&1
 
+rem Set DefaultPassword to empty to prevent duplicate Ghost Profile
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v AutoAdminLogon /t REG_SZ /d "1" /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultUserName /t REG_SZ /d "!NEW_USER!" /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultPassword /t REG_SZ /d "" /f >nul 2>&1
+
+goto CLEANUP_DEFAULTUSER
+
+:SKIP_LOCAL
+echo [PROCESS] Skipping Local User Creation (Online Mode)...
+
+:CLEANUP_DEFAULTUSER
 rem Cleanup defaultuser0
 net user defaultuser0 /delete >nul 2>&1
 if exist "C:\Users\defaultuser0" rmdir /s /q "C:\Users\defaultuser0" >nul 2>&1
@@ -257,22 +271,30 @@ if "!SETUP_MODE!"=="DESKTOP" (
     echo !cw!Please sign out or restart your computer to apply all changes.!0!
     echo/
     pause
-    exit
+    exit /b
 )
 
 echo !b!!cy![FINISHING] Triggering OOBE Engine... Please wait for 30s timer.!0!
 echo/
 start /b C:\Windows\System32\oobe\msoobe.exe
+
+echo [INFO] Background processes initiated.
+echo [INFO] Preparing to schedule restart in 30 seconds...
+ping 127.0.0.1 -n 5 >nul
+
 shutdown /r /t 30 /f /c "ITG FastOOBE: Finalizing setup. System will boot to Desktop automatically."
 
-echo [DONE] Process initiated. You can close this window or wait for reboot.
+echo/
+echo !b!!scg![DONE] Process initiated.!0! !cw!You can close this window or wait for reboot.!0!
+echo/
 pause
-exit
+exit /b
 '@
 
 $Utf8WithBom = New-Object System.Text.UTF8Encoding($True)
 [System.IO.File]::WriteAllText($TempCMD, $BatchCode, $Utf8WithBom)
 
-Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$TempCMD`"" -Wait
+# เปลี่ยน Parameter เป็น /k แทน /c เพื่อให้หน้าต่างไม่ปิดเองตอนเจอบั๊ก
+Start-Process -FilePath "cmd.exe" -ArgumentList "/k `"$TempCMD`"" -Wait
 
 Remove-Item -Path $TempCMD -Force -ErrorAction SilentlyContinue
