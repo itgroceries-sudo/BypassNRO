@@ -49,6 +49,6 @@
 ## 👨‍💻 Developed By
 
 **IT Groceries Shop Co.,ltd.**
-- 📘 **Facebook:** [FB.COM/KHOMSO(R)N](https://facebook.com/KHOMSO(R)N)
-- 📄 **Fanpage:** [FB.COM/Adm1n1straTOE(TM)](https://facebook.com/Adm1n1straTOE(TM))
-- 📺 **YouTube:** [YT.COM/@ITGRO(C)ERIES](https://youtube.com/@ITGRO(C)ERIES)
+- 📘 **Facebook:** [FB.COM/KHOMSO(R)N](https://facebook.com/itgroceries)
+- 📄 **Fanpage:** [FB.COM/Adm1n1straTOE(TM)](https://facebook.com/Adm1n1straTOE)
+- 📺 **YouTube:** [YT.COM/@ITGRO(C)ERIES](https://youtube.com/@itgroceries)
