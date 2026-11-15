@@ -3,6 +3,9 @@
 setlocal EnableDelayedExpansion
 chcp 65001 >nul
 
+rem ------------------------------------------------------------------------------
+rem [ ZONE 1: UAC GATEKEEPER ] ด่านตรวจสิทธิ์ Admin
+rem ------------------------------------------------------------------------------
 reg query "HKLM\System\CurrentControlSet\Control\MiniNT" >nul 2>&1
 if !errorlevel! neq 0 (
     fsutil dirty query %systemdrive% >nul 2>&1
@@ -93,7 +96,7 @@ echo/
 echo(      !bgr!!cw! [A] Local Account Mode (OOBE)       !0!     !bgw!!ck! [M] Device Manager                    !0!
 echo(      !bgb!!cw! [O] Online Account Mode (OOBE)      !0!     !bgw!!ck! [K] Disk Management                   !0!
 echo(      !bgw!!ck! [D] Desktop Tweaks (Current User)   !0!     !bgw!!ck! [U] User Accounts (netplwiz)          !0!
-echo(      !b!!cr! [E] Exit Program                      !0!   !bgw!!ck! [R] Registry Editor                   !0!
+echo(      !b!!cr! [E] Exit Program                      !0!     !bgw!!ck! [R] Registry Editor                   !0!
 echo/
 echo( !b!!cw!-----------------------------------------------------------------------------------------------!0!
 echo( !b!!cr!===============================================================================================!0!
@@ -221,7 +224,6 @@ if "!SETUP_MODE!"=="LOCAL" (
     net localgroup Administrators "!NEW_USER!" /add >nul 2>&1
     
     rem 2. [แก้ปัญหารหัสหมดอายุ] ปลดล็อกให้รหัสผ่านไม่มีวันหมดอายุ 
-    rem ใช้ PowerShell ชัวร์กว่า WMIC ที่โดนถอดใน Windows 11 ใหม่ๆ
     powershell -NoProfile -Command "Set-LocalUser -Name '!NEW_USER!' -PasswordNeverExpires $true" >nul 2>&1
     wmic useraccount where "name='!NEW_USER!'" set PasswordExpires=FALSE >nul 2>&1
     net accounts /maxpwage:unlimited >nul 2>&1
@@ -259,10 +261,10 @@ shutdown /r /t 30 /f /c "ITG FastOOBE: Finalizing setup. System will boot to Des
 
 echo [DONE] Process initiated. You can close this window or wait for reboot.
 pause
-exit /b
+exit
 #>
-$BatchScript = [System.IO.File]::ReadAllText($MyInvocation.MyCommand.Path)
+$BatchCode = ((Get-Content -LiteralPath $MyInvocation.MyCommand.Path) -join "`n") -replace '(?s)\A.*?\n(.*)\n#>\z', '$1'
 $TempBat = "$env:TEMP\FastOOBE.bat"
-$BatchScript -replace "(?s)<# :.*|.*#>", "" | Out-File -FilePath $TempBat -Encoding utf8
+[System.IO.File]::WriteAllText($TempBat, $BatchCode, [System.Text.Encoding]::UTF8)
 Start-Process -FilePath cmd.exe -ArgumentList "/c `"$TempBat`"" -Wait
 Remove-Item -Path $TempBat -Force -ErrorAction SilentlyContinue
