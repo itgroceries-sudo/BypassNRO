@@ -1,17 +1,12 @@
 <# : hybrid batch + powershell script
 @echo off
 chcp 65001 >nul
-mode con:cols=98 lines=28
-title ITG FastOOBE ^& Post-Setup Tweaks by IT Groceries Co.,ltd.
-
-rem บังคับอ่านไฟล์ตัวเองด้วย UTF-8 เพื่อรองรับการดับเบิลคลิกรันในเครื่อง
+title ITG FastOOBE ^& Post-Setup Tweaks
 powershell -noprofile -c "$param='%*';$ScriptPath='%~f0';iex((Get-Content -LiteralPath '%~f0' -Encoding UTF8 -Raw))"
 exit /b
 #>
 
-# =========================================================
-#  ITG FastOOBE & Post-Setup Tweaks (Hybrid Edition)
-# =========================================================
+Write-Host " [INFO] Loading ITG FastOOBE Hybrid Script..." -ForegroundColor Cyan
 
 $TempCMD = "$env:TEMP\ITG_FastOOBE.cmd"
 
@@ -22,7 +17,7 @@ setlocal EnableDelayedExpansion
 chcp 65001 >nul
 
 rem ------------------------------------------------------------------------------
-rem [ ZONE 1: UAC GATEKEEPER ] ตรวจสอบสิทธิ์ Administrator
+rem [ ZONE 1: UAC GATEKEEPER ]
 rem ------------------------------------------------------------------------------
 reg query "HKLM\System\CurrentControlSet\Control\MiniNT" >nul 2>&1
 if !errorlevel! neq 0 (
@@ -34,7 +29,7 @@ if !errorlevel! neq 0 (
 )
 
 rem ------------------------------------------------------------------------------
-rem [ ZONE 2: INITIALIZE COLORS ] โหลดชุดสี ANSI มาตรฐาน IT Groceries
+rem [ ZONE 2: INITIALIZE COLORS ]
 rem ------------------------------------------------------------------------------
 for /F "tokens=1,2 delims=#" %%a in ('"prompt #$H#$E# & echo on & for %%b in (1) do rem"') do set "nhcolor=%%b"
 set "0=!nhcolor![0m" & set "b=!nhcolor![1m" & set "_=!nhcolor![4m" & set "_0=!nhcolor![24m"
@@ -47,7 +42,7 @@ set "bgb=!nhcolor![44m" & set "bgm=!nhcolor![45m" & set "bgc=!nhcolor![46m" & se
 set "sbgm=!nhcolor![105m"
 
 rem ------------------------------------------------------------------------------
-rem [ ZONE 3: HARDWARE SCANNER ] สแกนสเปคเครื่องเบื้องต้น
+rem [ ZONE 3: HARDWARE SCANNER ]
 rem ------------------------------------------------------------------------------
 set "SYS_CPU="
 for /f "tokens=2*" %%A in ('reg query "HKLM\HARDWARE\DESCRIPTION\System\CentralProcessor\0" /v ProcessorNameString 2^>nul ^| find /i "REG_SZ"') do set "SYS_CPU=%%B"
@@ -86,7 +81,7 @@ if defined SYS_VGA ( set "SYS_VGA=!SYS_VGA:(R)=!" & set "SYS_VGA=!SYS_VGA: Corpo
 if "!SYS_VGA!"=="" set "SYS_VGA=Unknown VGA"
 
 rem ------------------------------------------------------------------------------
-rem [ ZONE 4: UI & USER INPUT ] หน้าจอเมนูหลักและรับคำสั่ง
+rem [ ZONE 4: UI & USER INPUT ]
 rem ------------------------------------------------------------------------------
 :MAIN_MENU
 cls
@@ -122,21 +117,21 @@ echo( !b!!cw!-------------------------------------------------------------------
 echo( !b!!cr!===============================================================================================!0!
 echo/
 
+rem แก้บั๊ก CMD Crash โดยแยกการแสดงผลสีออกจากการรับค่า set /p 
+echo( !b!!cg!   Select option [!cw!A, O, D, E, M, K, U, R!cg!] : !0!
 set "opt="
-set /p "opt=!b!!cg!   Select option [!cw!A, O, D, E, M, K, U, R!cg!] : !cw!!b!!0!!nhcolor![K"
+set /p "opt="
 
 if /i "!opt!"=="H" explorer.exe "%USERPROFILE%" & goto MAIN_MENU
 if /i "!opt!"=="T" start "" taskmgr & goto MAIN_MENU
-if /i "!opt!"=="X" exit
-if /i "!opt!"=="E" exit
+if /i "!opt!"=="X" exit /b
+if /i "!opt!"=="E" exit /b
 
-rem เรียกเครื่องมือช่างในหน้า OOBE
 if /i "!opt!"=="M" start "" devmgmt.msc & goto MAIN_MENU
 if /i "!opt!"=="K" start "" diskmgmt.msc & goto MAIN_MENU
 if /i "!opt!"=="U" start "" netplwiz & goto MAIN_MENU
 if /i "!opt!"=="R" start "" regedit & goto MAIN_MENU
 
-rem แยกเส้นทางตามโหมดที่เลือก (ไม่ใช้วงเล็บครอบป้องกันบั๊กเด้งหลุด)
 if /i "!opt!"=="D" goto MODE_DESKTOP
 if /i "!opt!"=="O" goto MODE_ONLINE
 if /i "!opt!"=="A" goto MODE_LOCAL
@@ -151,21 +146,22 @@ goto RUN_SETUP
 :MODE_ONLINE
 set "SETUP_MODE=ONLINE"
 echo/
-echo(  !b!!cg![INFO] Proceeding with Online Mode. ^(No Local User will be created^)!0!
+echo(  !b!!cg![INFO] Proceeding with Online Mode. (No Local User will be created)!0!
 goto RUN_SETUP
 
 :MODE_LOCAL
 set "SETUP_MODE=LOCAL"
 echo/
+rem แก้บั๊ก CMD Crash โดยแยกการแสดงผลสีออกจากการรับค่า set /p 
+echo( !b!!cg!   Enter Local Account Name [Default: User] : !0!
 set "NEW_USER="
-<nul set /p="!b!!cg!   Enter Local Account Name : !cw!!b!"
 set /p "NEW_USER="
 if "!NEW_USER!"=="" set "NEW_USER=User"
 goto RUN_SETUP
 
 :RUN_SETUP
 rem ------------------------------------------------------------------------------
-rem [ ZONE 5: SYSTEM WIDE REGISTRY & LOCALE ] ตั้งค่าระดับระบบปฏิบัติการ
+rem [ ZONE 5: SYSTEM WIDE REGISTRY & LOCALE ]
 rem ------------------------------------------------------------------------------
 echo/
 echo [PROCESS] Configuring System Region, TimeZone ^& Network Sharing...
@@ -188,7 +184,7 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v Enab
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v EnableFirstLogonAnimation /t reg_dword /d 0 /f >nul 2>&1
 
 rem ------------------------------------------------------------------------------
-rem [ ZONE 6: DYNAMIC USER INJECTION ] ฉีดค่าปรับแต่งเข้าโปรไฟล์ผู้ใช้
+rem [ ZONE 6: DYNAMIC USER INJECTION ]
 rem ------------------------------------------------------------------------------
 if "!SETUP_MODE!"=="DESKTOP" (
     set "REG_ROOT=HKCU"
@@ -232,22 +228,19 @@ reg add "!REG_ROOT!\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce" /v "ITG_I
 if not "!SETUP_MODE!"=="DESKTOP" reg unload "HKU\DefUser" >nul 2>&1
 
 rem ------------------------------------------------------------------------------
-rem [ ZONE 7: USER CREATION & AUTO-LOGIN ] สร้างบัญชีและตั้งค่าล็อกอินอัตโนมัติ
+rem [ ZONE 7: USER CREATION & AUTO-LOGIN ]
 rem ------------------------------------------------------------------------------
 if not "!SETUP_MODE!"=="LOCAL" goto SKIP_LOCAL
 
 echo [PROCESS] Creating Account ^& Enforcing Auto-Login...
 
-rem สร้างบัญชีพร้อมกำหนดรหัสผ่านว่างเปล่าอย่างชัดเจน
 net user "!NEW_USER!" "" /add >nul 2>&1
 net localgroup Administrators "!NEW_USER!" /add >nul 2>&1
 
-rem ปลดล็อกอายุรหัสผ่านไม่ให้หมดอายุ
 powershell -NoProfile -Command "Set-LocalUser -Name '!NEW_USER!' -PasswordNeverExpires $true" >nul 2>&1
 wmic useraccount where "name='!NEW_USER!'" set PasswordExpires=FALSE >nul 2>&1
 net accounts /maxpwage:unlimited >nul 2>&1
 
-rem บังคับใส่ DefaultPassword เป็นค่าว่างป้องกันชื่อบัญชีซ้ำ 2 ชื่อ
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v AutoAdminLogon /t REG_SZ /d "1" /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultUserName /t REG_SZ /d "!NEW_USER!" /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultPassword /t REG_SZ /d "" /f >nul 2>&1
@@ -255,16 +248,15 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultP
 goto CLEANUP_DEFAULTUSER
 
 :SKIP_LOCAL
-echo [PROCESS] Skipping Local User Creation ^(Online Mode^)...
+echo [PROCESS] Skipping Local User Creation...
 
 :CLEANUP_DEFAULTUSER
-rem ลบโปรไฟล์ขยะ defaultuser0
 net user defaultuser0 /delete >nul 2>&1
 if exist "C:\Users\defaultuser0" rmdir /s /q "C:\Users\defaultuser0" >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v defaultuser0 /t REG_DWORD /d 0 /f >nul 2>&1
 
 rem ------------------------------------------------------------------------------
-rem [ ZONE 8: THE MAGIC EXECUTION ] ปิดงาน OOBE และสั่งรีสตาร์ท
+rem [ ZONE 8: THE MAGIC EXECUTION ]
 rem ------------------------------------------------------------------------------
 echo/
 
@@ -273,13 +265,12 @@ if "!SETUP_MODE!"=="DESKTOP" (
     echo !cw!Please sign out or restart your computer to apply all changes.!0!
     echo/
     pause
-    exit
+    exit /b
 )
 
 echo !b!!cy![FINISHING] Finalizing OOBE State ^& Scheduling Reboot...!0!
 echo/
 
-rem แจ้งระบบว่า OOBE เสร็จสมบูรณ์แล้ว ป้องกันการวนลูปกลับมาหน้าตั้งค่าแรก
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Setup\State" /v "ImageState" /t REG_SZ /d "IMAGE_STATE_COMPLETE" /f >nul 2>&1
 reg add "HKLM\SYSTEM\Setup" /v "OOBEInProgress" /t REG_DWORD /d 0 /f >nul 2>&1
 reg add "HKLM\SYSTEM\Setup" /v "SetupType" /t REG_DWORD /d 0 /f >nul 2>&1
@@ -295,18 +286,13 @@ if !errorlevel! neq 0 (
 )
 
 pause
-exit
+exit /b
 '@
 
-# ล้างอักขระ Non-Breaking Space (\u00A0) ที่อาจติดมาจากการก๊อปปี้บนเว็บให้เป็น Space ปกติ
 $CleanBatchCode = $BatchCode -replace "\u00A0", " "
-
-# เขียนไฟล์ Batch ด้วย UTF-8 BOM
 $Utf8WithBom = New-Object System.Text.UTF8Encoding($True)
 [System.IO.File]::WriteAllText($TempCMD, $CleanBatchCode, $Utf8WithBom)
 
-# รัน CMD และรอจนกว่าจะจบการทำงาน
-Start-Process -FilePath "cmd.exe" -ArgumentList "/k `"$TempCMD`"" -Wait
-
-# ลบไฟล์ชั่วคราวทิ้งหลังจบงาน
+Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$TempCMD`"" -Wait
 Remove-Item -Path $TempCMD -Force -ErrorAction SilentlyContinue
+Write-Host " [INFO] ITG FastOOBE Session Closed." -ForegroundColor Green
