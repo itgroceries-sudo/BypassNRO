@@ -213,7 +213,8 @@ reg unload "HKU\DefUser" >nul 2>&1
 rem ------------------------------------------------------------------------------
 rem [ ZONE 7: USER CREATION & AUTO-LOGIN ]
 rem ------------------------------------------------------------------------------
-if not "!SETUP_MODE!"=="LOCAL" goto SKIP_LOCAL
+if "!SETUP_MODE!"=="ONLINE" goto SKIP_LOCAL
+if "!SETUP_MODE!"=="DESKTOP" goto SKIP_LOCAL
 
 echo [PROCESS] Creating Account ^& Enforcing Auto-Login...
 
@@ -224,12 +225,11 @@ rem [FIX PATH] ใช้คำสั่งแบบปลอดภัย ป้�
 if exist "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" (
     "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "Set-LocalUser -Name '!NEW_USER!' -PasswordNeverExpires $true" >nul 2>&1
 ) else (
-    rem เผื่อฉุกเฉินถ้าเรียกแบบยาวไม่ได้
     powershell -NoProfile -Command "Set-LocalUser -Name '!NEW_USER!' -PasswordNeverExpires $true" >nul 2>&1
 )
-
 net accounts /maxpwage:unlimited >nul 2>&1
 
+rem ลบ defaultuser0 เฉพาะโหมด Local เท่านั้น! ห้ามลบในโหมด Online
 net user defaultuser0 /delete >nul 2>&1
 if exist "C:\Users\defaultuser0" rmdir /s /q "C:\Users\defaultuser0" >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v defaultuser0 /t REG_DWORD /d 0 /f >nul 2>&1
@@ -238,12 +238,12 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v AutoAdmi
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultUserName /t REG_SZ /d "!NEW_USER!" /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultPassword /t REG_SZ /d "" /f >nul 2>&1
 
-goto CLEANUP_DEFAULTUSER
+goto FINISH_ZONE7
 
 :SKIP_LOCAL
-echo [PROCESS] Skipping Local User Creation (Online Mode)...
+echo [PROCESS] Skipping Local User Creation...
 
-:CLEANUP_DEFAULTUSER
+:FINISH_ZONE7
 rem ------------------------------------------------------------------------------
 rem [ ZONE 8: THE MAGIC EXECUTION ]
 rem ------------------------------------------------------------------------------
@@ -257,12 +257,23 @@ if "!SETUP_MODE!"=="DESKTOP" (
     exit /b
 )
 
+if "!SETUP_MODE!"=="ONLINE" (
+    echo !b!!cg![DONE] Online tweaks successfully injected to Default User!!0!
+    echo !cw!You can now close this window and continue Windows Setup normally.!0!
+    echo/
+    pause
+    exit /b
+)
+
 echo !b!!cy![FINISHING] Finalizing Setup... Please wait.!0!
 echo/
 
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Setup\State" /v "ImageState" /t REG_SZ /d "IMAGE_STATE_COMPLETE" /f >nul 2>&1
+reg add "HKLM\SYSTEM\Setup" /v "OOBEInProgress" /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SYSTEM\Setup" /v "SetupType" /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SYSTEM\Setup" /v "SystemSetupInProgress" /t REG_DWORD /d 0 /f >nul 2>&1
 
-rem [FIX PATH] ย้าย msoobe.exe มาไว้หลังสุด และใช้ pushd เพื่อป้องกัน Path Error
+rem [FIX PATH] ย้าย msoobe.exe มาไว้หลังสุด และใช้ pushd
 pushd "%SystemRoot%\System32\oobe"
 if exist "msoobe.exe" start "" /b msoobe.exe >nul 2>&1
 popd
@@ -277,9 +288,6 @@ if !errorlevel! neq 0 (
         powershell -NoProfile -Command "Restart-Computer -Force" >nul 2>&1
     )
 )
-
-pause
-exit /b
 
 pause
 exit /b
