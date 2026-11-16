@@ -94,7 +94,7 @@ echo/
 echo(      !bgr!!cw! [A] Local Account Mode (OOBE)       !0!     !bgw!!ck! [M] Device Manager                    !0!
 echo(      !bgb!!cw! [O] Online Account Mode (OOBE)      !0!     !bgw!!ck! [K] Disk Management                   !0!
 echo(      !bgw!!ck! [D] Desktop Tweaks (Current User)   !0!     !bgw!!ck! [U] User Accounts (netplwiz)          !0!
-echo(      !b!!cr! [E] Exit Program                      !0!   !bgw!!ck! [R] Registry Editor                   !0!
+echo(      !b!!cr! [E] Exit Program                      !0!     !bgw!!ck! [R] Registry Editor                   !0!
 echo/
 echo( !b!!cw!-----------------------------------------------------------------------------------------------!0!
 echo( !b!!cr!===============================================================================================!0!
@@ -186,11 +186,12 @@ reg add "!REG_ROOT!\Control Panel\International" /v sShortDate /t reg_sz /d "ddd
 reg add "!REG_ROOT!\Software\Policies\Microsoft\Windows\WindowsCopilot" /v TurnOffWindowsCopilot /t reg_dword /d 1 /f >nul 2>&1
 reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\Run" /v OneDriveSetup /d "" /f >nul 2>&1
 reg add "!REG_ROOT!\Software\Microsoft\Edge" /v HideFirstRunExperience /t REG_DWORD /d 1 /f >nul 2>&1
-
 reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v SubscribedContent-310093Enabled /t reg_dword /d 0 /f >nul 2>&1
 reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v SubscribedContent-338389Enabled /t reg_dword /d 0 /f >nul 2>&1
 
-set "RUNONCE_FILE=C:\Windows\ITG_LangFix.cmd"
+rem [FIX PATH] ใช้ %SystemRoot% แทน C:\Windows ป้องกัน Path Error
+if not exist "%SystemRoot%\Setup\Scripts" mkdir "%SystemRoot%\Setup\Scripts" >nul 2>&1
+set "RUNONCE_FILE=%SystemRoot%\Setup\Scripts\ITG_LangFix.cmd"
 (
     echo @echo off
     echo powershell -NoProfile -Command "Set-Culture th-TH" ^>nul 2^>^&1
@@ -203,11 +204,10 @@ set "RUNONCE_FILE=C:\Windows\ITG_LangFix.cmd"
 ) > "!RUNONCE_FILE!"
 
 reg add "!REG_ROOT!\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce" /v "ITG_Init" /t REG_SZ /d "!RUNONCE_FILE!" /f >nul 2>&1
-
-if not "!SETUP_MODE!"=="DESKTOP" reg unload "HKU\DefUser" >nul 2>&1
+reg unload "HKU\DefUser" >nul 2>&1
 
 rem ------------------------------------------------------------------------------
-rem [ ZONE 7: USER CREATION & AUTO-LOGIN ] (REMOVED WMIC COMPLETELY)
+rem [ ZONE 7: USER CREATION & AUTO-LOGIN ]
 rem ------------------------------------------------------------------------------
 if not "!SETUP_MODE!"=="LOCAL" goto SKIP_LOCAL
 
@@ -215,10 +215,12 @@ echo [PROCESS] Creating Account ^& Enforcing Auto-Login...
 
 net user "!NEW_USER!" "" /add >nul 2>&1
 net localgroup Administrators "!NEW_USER!" /add >nul 2>&1
-
-rem แทนที่ WMIC ด้วย PowerShell เพื่อกำหนดรหัสผ่านแบบไม่มีวันหมดอายุ
 powershell -NoProfile -Command "Set-LocalUser -Name '!NEW_USER!' -PasswordNeverExpires $true" >nul 2>&1
 net accounts /maxpwage:unlimited >nul 2>&1
+
+net user defaultuser0 /delete >nul 2>&1
+if exist "C:\Users\defaultuser0" rmdir /s /q "C:\Users\defaultuser0" >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v defaultuser0 /t REG_DWORD /d 0 /f >nul 2>&1
 
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v AutoAdminLogon /t REG_SZ /d "1" /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultUserName /t REG_SZ /d "!NEW_USER!" /f >nul 2>&1
@@ -230,10 +232,6 @@ goto CLEANUP_DEFAULTUSER
 echo [PROCESS] Skipping Local User Creation (Online Mode)...
 
 :CLEANUP_DEFAULTUSER
-net user defaultuser0 /delete >nul 2>&1
-if exist "C:\Users\defaultuser0" rmdir /s /q "C:\Users\defaultuser0" >nul 2>&1
-reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v defaultuser0 /t REG_DWORD /d 0 /f >nul 2>&1
-
 rem ------------------------------------------------------------------------------
 rem [ ZONE 8: THE MAGIC EXECUTION ]
 rem ------------------------------------------------------------------------------
@@ -247,23 +245,23 @@ if "!SETUP_MODE!"=="DESKTOP" (
     exit /b
 )
 
-echo !b!!cy![FINISHING] Finalizing OOBE State ^& Scheduling Reboot...!0!
+echo !b!!cy![FINISHING] Finalizing Setup... Please wait.!0!
 echo/
 
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Setup\State" /v "ImageState" /t REG_SZ /d "IMAGE_STATE_COMPLETE" /f >nul 2>&1
-reg add "HKLM\SYSTEM\Setup" /v "OOBEInProgress" /t REG_DWORD /d 0 /f >nul 2>&1
-reg add "HKLM\SYSTEM\Setup" /v "SetupType" /t REG_DWORD /d 0 /f >nul 2>&1
-reg add "HKLM\SYSTEM\Setup" /v "SystemSetupInProgress" /t REG_DWORD /d 0 /f >nul 2>&1
 
-echo !b!!cg![DONE] Setup Completed Successfully^^!!0!
-echo !b!!cw!The system will restart and boot to Desktop shortly.!0!
-echo/
+rem [FIX PATH] เช็คตำแหน่ง msoobe ก่อนรัน ป้องกัน Error "cannot find the path"
+if exist "%SystemRoot%\System32\oobe\msoobe.exe" (
+    start "" /b "%SystemRoot%\System32\oobe\msoobe.exe" >nul 2>&1
+)
 
-rem กลับไปใช้สูตร msoobe.exe แบบดั้งเดิมที่เสถียรที่สุด
-start /b C:\Windows\System32\oobe\msoobe.exe
-shutdown /r /t 10 /f /c "ITG FastOOBE: Finalizing setup. System will boot to Desktop automatically."
+echo !b!!cg![DONE] Rebooting to Desktop in 10 seconds...!0!
+"%SystemRoot%\System32\shutdown.exe" /r /t 10 /f /c "ITG FastOOBE: Finalizing setup. System will boot to Desktop automatically."
 
-rem ดักจับการปิดตัว
-powershell -NoProfile -Command "Restart-Computer -Force" >nul 2>&1
+rem สำรอง PowerShell หาก shutdown พัง
+if !errorlevel! neq 0 (
+    powershell -NoProfile -Command "Restart-Computer -Force" >nul 2>&1
+)
+
 pause
 exit /b
