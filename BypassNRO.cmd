@@ -220,8 +220,14 @@ echo [PROCESS] Creating Account ^& Enforcing Auto-Login...
 net user "!NEW_USER!" "" /add >nul 2>&1
 net localgroup Administrators "!NEW_USER!" /add >nul 2>&1
 
-rem [FIX PATH] อ้างอิง Path เต็มของ PowerShell ป้องกัน Error หาไฟล์ไม่เจอใน OOBE
-"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "Set-LocalUser -Name '!NEW_USER!' -PasswordNeverExpires $true" >nul 2>&1
+rem [FIX PATH] ใช้คำสั่งแบบปลอดภัย ป้องกัน Path แตก
+if exist "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" (
+    "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "Set-LocalUser -Name '!NEW_USER!' -PasswordNeverExpires $true" >nul 2>&1
+) else (
+    rem เผื่อฉุกเฉินถ้าเรียกแบบยาวไม่ได้
+    powershell -NoProfile -Command "Set-LocalUser -Name '!NEW_USER!' -PasswordNeverExpires $true" >nul 2>&1
+)
+
 net accounts /maxpwage:unlimited >nul 2>&1
 
 net user defaultuser0 /delete >nul 2>&1
@@ -256,17 +262,24 @@ echo/
 
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Setup\State" /v "ImageState" /t REG_SZ /d "IMAGE_STATE_COMPLETE" /f >nul 2>&1
 
-rem [FIX PATH] เช็คตำแหน่ง msoobe ก่อนรัน
-if exist "%SystemRoot%\System32\oobe\msoobe.exe" (
-    start "" /b "%SystemRoot%\System32\oobe\msoobe.exe" >nul 2>&1
-)
+rem [FIX PATH] ย้าย msoobe.exe มาไว้หลังสุด และใช้ pushd เพื่อป้องกัน Path Error
+pushd "%SystemRoot%\System32\oobe"
+if exist "msoobe.exe" start "" /b msoobe.exe >nul 2>&1
+popd
 
 echo !b!!cg![DONE] Rebooting to Desktop in 10 seconds...!0!
 "%SystemRoot%\System32\shutdown.exe" /r /t 10 /f /c "ITG FastOOBE: Finalizing setup. System will boot to Desktop automatically."
 
 if !errorlevel! neq 0 (
-    "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "Restart-Computer -Force" >nul 2>&1
+    if exist "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" (
+        "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "Restart-Computer -Force" >nul 2>&1
+    ) else (
+        powershell -NoProfile -Command "Restart-Computer -Force" >nul 2>&1
+    )
 )
+
+pause
+exit /b
 
 pause
 exit /b
