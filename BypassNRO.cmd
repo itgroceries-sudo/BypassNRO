@@ -87,7 +87,11 @@ for %%C in ("!cc!") do for %%Y in ("!cy!") do (
     set "PAD_LINE=!PAD_LINE:VGA:=%%~CVGA:%%~Y!"
 )
 echo( !b!!bgm!    !PAD_LINE!    !0!
-echo( !b!!cw!===============================================================================================!0!
+echo( !b!!cr!===============================================================================================!0!
+echo/
+echo( !b!!cg!----------------------------------- [v2.1 - PathFix] ------------------------------------------!0!
+echo/
+echo( !b!!cr!===============================================================================================!0!
 echo(      !cr![H] !cg!^^!^^! !cw!for ^^!HomePath^^!         !cr![T]!cw!askmgr !cg!^^!^^! !cw!Task Manager         !cw!e!cr![X]!cw!it !cg!^^!^^! !cw!for Exit!0!
 echo( !b!!cw!-----------------------------------------------------------------------------------------------!0!
 echo/
@@ -150,7 +154,7 @@ reg add "HKLM\SYSTEM\CurrentControlSet\Services\LanmanWorkstation\Parameters" /v
 
 schtasks /delete /tn "\Microsoft\Windows\Servicing\OOBEFodSetup" /f >nul 2>&1
 
-powershell -NoProfile -Command "Set-WinSystemLocale th-TH; Set-WinHomeLocation -GeoId 227" >nul 2>&1
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "Set-WinSystemLocale th-TH; Set-WinHomeLocation -GeoId 227" >nul 2>&1
 tzutil /s "SE Asia Standard Time" >nul 2>&1
 
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\BitLocker" /v "PreventDeviceEncryption" /t REG_DWORD /d 1 /f >nul 2>&1
@@ -194,8 +198,8 @@ if not exist "%SystemRoot%\Setup\Scripts" mkdir "%SystemRoot%\Setup\Scripts" >nu
 set "RUNONCE_FILE=%SystemRoot%\Setup\Scripts\ITG_LangFix.cmd"
 (
     echo @echo off
-    echo powershell -NoProfile -Command "Set-Culture th-TH" ^>nul 2^>^&1
-    echo powershell -NoProfile -Command "Set-WinUserLanguageList -LanguageList en-US,th-TH -Force" ^>nul 2^>^&1
+    echo "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "Set-Culture th-TH" ^>nul 2^>^&1
+    echo "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "Set-WinUserLanguageList -LanguageList en-US,th-TH -Force" ^>nul 2^>^&1
     echo reg add "HKCU\Keyboard Layout\Toggle" /v Hotkey /t REG_SZ /d 4 /f ^>nul 2^>^&1
     echo reg add "HKCU\Keyboard Layout\Toggle" /v "Language Hotkey" /t REG_SZ /d 4 /f ^>nul 2^>^&1
     echo reg add "HKCU\Keyboard Layout\Toggle" /v "Layout Hotkey" /t REG_SZ /d 3 /f ^>nul 2^>^&1
@@ -215,7 +219,9 @@ echo [PROCESS] Creating Account ^& Enforcing Auto-Login...
 
 net user "!NEW_USER!" "" /add >nul 2>&1
 net localgroup Administrators "!NEW_USER!" /add >nul 2>&1
-powershell -NoProfile -Command "Set-LocalUser -Name '!NEW_USER!' -PasswordNeverExpires $true" >nul 2>&1
+
+rem [FIX PATH] อ้างอิง Path เต็มของ PowerShell ป้องกัน Error หาไฟล์ไม่เจอใน OOBE
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "Set-LocalUser -Name '!NEW_USER!' -PasswordNeverExpires $true" >nul 2>&1
 net accounts /maxpwage:unlimited >nul 2>&1
 
 net user defaultuser0 /delete >nul 2>&1
@@ -250,7 +256,7 @@ echo/
 
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Setup\State" /v "ImageState" /t REG_SZ /d "IMAGE_STATE_COMPLETE" /f >nul 2>&1
 
-rem [FIX PATH] เช็คตำแหน่ง msoobe ก่อนรัน ป้องกัน Error "cannot find the path"
+rem [FIX PATH] เช็คตำแหน่ง msoobe ก่อนรัน
 if exist "%SystemRoot%\System32\oobe\msoobe.exe" (
     start "" /b "%SystemRoot%\System32\oobe\msoobe.exe" >nul 2>&1
 )
@@ -258,9 +264,8 @@ if exist "%SystemRoot%\System32\oobe\msoobe.exe" (
 echo !b!!cg![DONE] Rebooting to Desktop in 10 seconds...!0!
 "%SystemRoot%\System32\shutdown.exe" /r /t 10 /f /c "ITG FastOOBE: Finalizing setup. System will boot to Desktop automatically."
 
-rem สำรอง PowerShell หาก shutdown พัง
 if !errorlevel! neq 0 (
-    powershell -NoProfile -Command "Restart-Computer -Force" >nul 2>&1
+    "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "Restart-Computer -Force" >nul 2>&1
 )
 
 pause
