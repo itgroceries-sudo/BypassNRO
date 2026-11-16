@@ -26,7 +26,7 @@ set "bgm=!ESC![45m" & set "bgr=!ESC![41m" & set "bgb=!ESC![44m" & set "bgw=!ESC!
 set "sbgm=!ESC![105m"
 
 rem ------------------------------------------------------------------------------
-rem [ ZONE 3: HARDWARE SCANNER ] (REPLACED WMIC WITH POWERSHELL CIMINSTANCE)
+rem [ ZONE 3: HARDWARE SCANNER ]
 rem ------------------------------------------------------------------------------
 set "SYS_CPU="
 for /f "tokens=2*" %%A in ('reg query "HKLM\HARDWARE\DESCRIPTION\System\CentralProcessor\0" /v ProcessorNameString 2^>nul ^| find /i "REG_SZ"') do set "SYS_CPU=%%B"
@@ -65,7 +65,7 @@ if defined SYS_VGA ( set "SYS_VGA=!SYS_VGA:(R)=!" & set "SYS_VGA=!SYS_VGA: Corpo
 if "!SYS_VGA!"=="" set "SYS_VGA=Unknown VGA"
 
 rem ------------------------------------------------------------------------------
-rem [ ZONE 4: UI & USER INPUT ]
+rem [ ZONE 4: UI & SMART USER INPUT (LODE MENU) ]
 rem ------------------------------------------------------------------------------
 :MAIN_MENU
 cls
@@ -89,13 +89,13 @@ for %%C in ("!cc!") do for %%Y in ("!cy!") do (
 echo( !b!!bgm!    !PAD_LINE!    !0!
 echo( !b!!cr!===============================================================================================!0!
 echo/
-echo( !b!!cg!----------------------------------- [v2.1 - PathFix] ------------------------------------------!0!
+echo( !b!!cg!----------------------------------- [v3.1 - LODE ^& LangMenu] ----------------------------------!0!
 echo/
 echo( !b!!cr!===============================================================================================!0!
 echo(      !cr![H] !cg!^^!^^! !cw!for ^^!HomePath^^!         !cr![T]!cw!askmgr !cg!^^!^^! !cw!Task Manager         !cw!e!cr![X]!cw!it !cg!^^!^^! !cw!for Exit!0!
 echo( !b!!cw!-----------------------------------------------------------------------------------------------!0!
 echo/
-echo(      !bgr!!cw! [A] Local Account Mode (OOBE)       !0!     !bgw!!ck! [M] Device Manager                    !0!
+echo(      !bgr!!cw! [L] Local Account Mode (OOBE)       !0!     !bgw!!ck! [M] Device Manager                    !0!
 echo(      !bgb!!cw! [O] Online Account Mode (OOBE)      !0!     !bgw!!ck! [K] Disk Management                   !0!
 echo(      !bgw!!ck! [D] Desktop Tweaks (Current User)   !0!     !bgw!!ck! [U] User Accounts (netplwiz)          !0!
 echo(      !b!!cr! [E] Exit Program                      !0!   !bgw!!ck! [R] Registry Editor                   !0!
@@ -105,7 +105,7 @@ echo( !b!!cr!===================================================================
 echo/
 
 set "opt="
-set /p "opt=!b!!cg!   Select option [!cw!A, O, D, E, M, K, U, R!cg!] : !0!"
+set /p "opt=!b!!cg!   Select option [!cw!L, O, D, E, M, K, U, R!cg!] : !0!"
 
 if /i "!opt!"=="H" explorer.exe "%USERPROFILE%" & goto MAIN_MENU
 if /i "!opt!"=="T" start "" taskmgr & goto MAIN_MENU
@@ -117,45 +117,112 @@ if /i "!opt!"=="K" start "" diskmgmt.msc & goto MAIN_MENU
 if /i "!opt!"=="U" start "" netplwiz & goto MAIN_MENU
 if /i "!opt!"=="R" start "" regedit & goto MAIN_MENU
 
-if /i "!opt!"=="D" goto MODE_DESKTOP
+if /i "!opt!"=="L" goto MODE_LOCAL
 if /i "!opt!"=="O" goto MODE_ONLINE
-if /i "!opt!"=="A" goto MODE_LOCAL
+if /i "!opt!"=="D" goto MODE_DESKTOP
 goto MAIN_MENU
-
-:MODE_DESKTOP
-set "SETUP_MODE=DESKTOP"
-echo/
-echo(  !b!!cm![INFO] Desktop Mode selected. Tweaks will apply to CURRENT USER.!0!
-goto RUN_SETUP
 
 :MODE_ONLINE
 set "SETUP_MODE=ONLINE"
-echo/
-echo(  !b!!cg![INFO] Proceeding with Online Mode. (No Local User will be created)!0!
-goto RUN_SETUP
+goto SUMMARY_SCREEN
+
+:MODE_DESKTOP
+set "SETUP_MODE=DESKTOP"
+goto SUMMARY_SCREEN
 
 :MODE_LOCAL
 set "SETUP_MODE=LOCAL"
 echo/
 set "NEW_USER="
-set /p "NEW_USER=!b!!cg!   Enter Local Account Name [Default: User] : !0!"
+rem รองรับการสลับโหมดทันที หากพิมพ์ O, D, E หรือ B (Back)
+set /p "NEW_USER=!b!!cg!   Enter Local Account Name [Default: User, !cw!B!cg! for Back] : !0!"
+if /i "!NEW_USER!"=="B" goto MAIN_MENU
+if /i "!NEW_USER!"=="O" goto MODE_ONLINE
+if /i "!NEW_USER!"=="D" goto MODE_DESKTOP
+if /i "!NEW_USER!"=="E" exit /b
+if /i "!NEW_USER!"=="L" goto MODE_LOCAL
 if "!NEW_USER!"=="" set "NEW_USER=User"
-goto RUN_SETUP
+
+:LANG_MENU
+cls
+echo/
+echo(  !b!!cw!-------------------------------------------------------------------------!0!
+echo(  !b!!cy!   Select System Region ^& Language (Local Mode only)!0!
+echo(  !b!!cw!-------------------------------------------------------------------------!0!
+echo(    !cw![ 1 ] Thai (Auto) - Default      [ 6 ] Korean!0!
+echo(    !cw![ 2 ] English (US)               [ 7 ] Russian!0!
+echo(    !cw![ 3 ] Chinese (PRC)              [ 8 ] German!0!
+echo(    !cw![ 4 ] Chinese (Taiwan)           [ 9 ] French!0!
+echo(    !cw![ 5 ] Japanese                   [ 10] Arabic!0!
+echo/
+echo(    !cw![ B ] Back to Main Menu!0!
+echo/
+set "LANG_OPT="
+set /p "LANG_OPT=!b!!cg!   Choose [!cw!1-10, B!cg!] (Press Enter for 1) : !0!"
+
+if /i "!LANG_OPT!"=="B" goto MAIN_MENU
+if "!LANG_OPT!"=="" set "LANG_OPT=1"
+
+rem ใช้โค้ดบรรทัดเดียวป้องกัน Error วงเล็บตีกันใน Batch
+if "!LANG_OPT!"=="1" set "LANG_NAME=Thai (Auto)" & set "SYS_LOCALE=th-TH" & set "GEO_ID=227" & set "LANG_LIST=en-US,th-TH" & set "SYS_TZ=SE Asia Standard Time" & goto SUMMARY_SCREEN
+if "!LANG_OPT!"=="2" set "LANG_NAME=English (US)" & set "SYS_LOCALE=en-US" & set "GEO_ID=244" & set "LANG_LIST=en-US" & set "SYS_TZ=Pacific Standard Time" & goto SUMMARY_SCREEN
+if "!LANG_OPT!"=="3" set "LANG_NAME=Chinese (PRC)" & set "SYS_LOCALE=zh-CN" & set "GEO_ID=45" & set "LANG_LIST=zh-CN,en-US" & set "SYS_TZ=China Standard Time" & goto SUMMARY_SCREEN
+if "!LANG_OPT!"=="4" set "LANG_NAME=Chinese (Taiwan)" & set "SYS_LOCALE=zh-TW" & set "GEO_ID=237" & set "LANG_LIST=zh-TW,en-US" & set "SYS_TZ=Taipei Standard Time" & goto SUMMARY_SCREEN
+if "!LANG_OPT!"=="5" set "LANG_NAME=Japanese" & set "SYS_LOCALE=ja-JP" & set "GEO_ID=122" & set "LANG_LIST=ja-JP,en-US" & set "SYS_TZ=Tokyo Standard Time" & goto SUMMARY_SCREEN
+if "!LANG_OPT!"=="6" set "LANG_NAME=Korean" & set "SYS_LOCALE=ko-KR" & set "GEO_ID=134" & set "LANG_LIST=ko-KR,en-US" & set "SYS_TZ=Korea Standard Time" & goto SUMMARY_SCREEN
+if "!LANG_OPT!"=="7" set "LANG_NAME=Russian" & set "SYS_LOCALE=ru-RU" & set "GEO_ID=203" & set "LANG_LIST=ru-RU,en-US" & set "SYS_TZ=Russian Standard Time" & goto SUMMARY_SCREEN
+if "!LANG_OPT!"=="8" set "LANG_NAME=German" & set "SYS_LOCALE=de-DE" & set "GEO_ID=94" & set "LANG_LIST=de-DE,en-US" & set "SYS_TZ=W. Europe Standard Time" & goto SUMMARY_SCREEN
+if "!LANG_OPT!"=="9" set "LANG_NAME=French" & set "SYS_LOCALE=fr-FR" & set "GEO_ID=84" & set "LANG_LIST=fr-FR,en-US" & set "SYS_TZ=Romance Standard Time" & goto SUMMARY_SCREEN
+if "!LANG_OPT!"=="10" set "LANG_NAME=Arabic" & set "SYS_LOCALE=ar-SA" & set "GEO_ID=205" & set "LANG_LIST=ar-SA,en-US" & set "SYS_TZ=Arab Standard Time" & goto SUMMARY_SCREEN
+goto LANG_MENU
+
+:SUMMARY_SCREEN
+cls
+echo/
+echo(  !b!!cw!-------------------------------------------------------------------------!0!
+echo(  !b!!cy!   [ SUMMARY ] Please Review Your Settings!0!
+echo(  !b!!cw!-------------------------------------------------------------------------!0!
+
+rem ใช้ goto โดดข้ามแทนการใช้ if() ครอบ เพื่อหลีกเลี่ยงวงเล็บในข้อความ echo ตีกับระบบ
+if "!SETUP_MODE!"=="LOCAL" goto SUM_LOCAL
+if "!SETUP_MODE!"=="ONLINE" goto SUM_ONLINE
+if "!SETUP_MODE!"=="DESKTOP" goto SUM_DESKTOP
+
+:SUM_LOCAL
+echo(    !cw!Mode       : !cg!Local Account Mode (OOBE)!0!
+echo(    !cw!Username   : !cg!!NEW_USER!!0!
+echo(    !cw!Language   : !cg!!LANG_NAME!!0!
+goto SUM_CONFIRM
+
+:SUM_ONLINE
+echo(    !cw!Mode       : !bgb!Online Account Mode (OOBE)!0!
+echo(    !cw!Action     : Inject UI Tweaks ONLY. (No User Created, No Restart)!0!
+goto SUM_CONFIRM
+
+:SUM_DESKTOP
+echo(    !cw!Mode       : !bgw!!ck!Desktop Tweaks (Current User)!0!
+echo(    !cw!Action     : Apply Tweaks to Current Desktop Profile.!0!
+goto SUM_CONFIRM
+
+:SUM_CONFIRM
+echo(  !b!!cw!-------------------------------------------------------------------------!0!
+echo/
+set "CONFIRM="
+set /p "CONFIRM=!b!!cg!   Press [!cw!Y!cg!] to Start Setup or [!cw!B!cg!] to Back : !0!"
+if /i "!CONFIRM!"=="B" goto MAIN_MENU
+if /i "!CONFIRM!"=="Y" goto RUN_SETUP
+goto SUMMARY_SCREEN
 
 :RUN_SETUP
 rem ------------------------------------------------------------------------------
 rem [ ZONE 5: SYSTEM WIDE REGISTRY & LOCALE ]
 rem ------------------------------------------------------------------------------
 echo/
-echo [PROCESS] Configuring System Region, TimeZone ^& Network Sharing...
+echo [PROCESS] Configuring System Registry ^& Network Sharing...
 
 reg add "HKLM\SYSTEM\CurrentControlSet\Services\LanmanWorkstation\Parameters" /v "AllowInsecureGuestAuth" /t REG_DWORD /d 1 /f >nul 2>&1
 reg add "HKLM\SYSTEM\CurrentControlSet\Services\LanmanWorkstation\Parameters" /v "RequireSecuritySignature" /t REG_DWORD /d 0 /f >nul 2>&1
-
 schtasks /delete /tn "\Microsoft\Windows\Servicing\OOBEFodSetup" /f >nul 2>&1
-
-"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "Set-WinSystemLocale th-TH; Set-WinHomeLocation -GeoId 227" >nul 2>&1
-tzutil /s "SE Asia Standard Time" >nul 2>&1
 
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\BitLocker" /v "PreventDeviceEncryption" /t REG_DWORD /d 1 /f >nul 2>&1
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\Network\NewNetworkWindowOff" /v "" /f >nul 2>&1
@@ -165,6 +232,13 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE" /v BypassNRO /t re
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\OOBE" /v DisablePrivacyExperience /t REG_DWORD /d 1 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v EnableFirstLogonAnimation /t reg_dword /d 0 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v EnableFirstLogonAnimation /t reg_dword /d 0 /f >nul 2>&1
+
+rem ตั้งค่า Locale เฉพาะโหมด Local เท่านั้น เพื่อไม่กวนภาษาเดิมในโหมด Online/Desktop
+if "!SETUP_MODE!"=="LOCAL" (
+    echo [PROCESS] Applying Region [!SYS_LOCALE!] ^& TimeZone [!SYS_TZ!]...
+    "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "Set-WinSystemLocale !SYS_LOCALE!; Set-WinHomeLocation -GeoId !GEO_ID!" >nul 2>&1
+    tzutil /s "!SYS_TZ!" >nul 2>&1
+)
 
 rem ------------------------------------------------------------------------------
 rem [ ZONE 6: DYNAMIC USER INJECTION ]
@@ -193,22 +267,28 @@ reg add "!REG_ROOT!\Software\Microsoft\Edge" /v HideFirstRunExperience /t REG_DW
 reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v SubscribedContent-310093Enabled /t reg_dword /d 0 /f >nul 2>&1
 reg add "!REG_ROOT!\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v SubscribedContent-338389Enabled /t reg_dword /d 0 /f >nul 2>&1
 
-rem [FIX PATH] ใช้ %SystemRoot% แทน C:\Windows ป้องกัน Path Error
-if not exist "%SystemRoot%\Setup\Scripts" mkdir "%SystemRoot%\Setup\Scripts" >nul 2>&1
-set "RUNONCE_FILE=%SystemRoot%\Setup\Scripts\ITG_LangFix.cmd"
-(
-    echo @echo off
-    echo "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "Set-Culture th-TH" ^>nul 2^>^&1
-    echo "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "Set-WinUserLanguageList -LanguageList en-US,th-TH -Force" ^>nul 2^>^&1
-    echo reg add "HKCU\Keyboard Layout\Toggle" /v Hotkey /t REG_SZ /d 4 /f ^>nul 2^>^&1
-    echo reg add "HKCU\Keyboard Layout\Toggle" /v "Language Hotkey" /t REG_SZ /d 4 /f ^>nul 2^>^&1
-    echo reg add "HKCU\Keyboard Layout\Toggle" /v "Layout Hotkey" /t REG_SZ /d 3 /f ^>nul 2^>^&1
-    echo reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce" /v "ITG_Init" /f ^>nul 2^>^&1
-    echo del "%%~f0"
-) > "!RUNONCE_FILE!"
+rem บังคับรันสคริปต์สลับภาษาในโหมด Local เท่านั้น (กันบั๊กภาษาเพี้ยนในโหมดอื่น)
+if "!SETUP_MODE!"=="LOCAL" (
+    if not exist "%SystemRoot%\Setup\Scripts" mkdir "%SystemRoot%\Setup\Scripts" >nul 2>&1
+    set "RUNONCE_FILE=%SystemRoot%\Setup\Scripts\ITG_LangFix.cmd"
+    (
+        echo @echo off
+        echo "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "Set-Culture !SYS_LOCALE!" ^^^>nul 2^^^>^^^&1
+        echo "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "Set-WinUserLanguageList -LanguageList !LANG_LIST! -Force" ^^^>nul 2^^^>^^^&1
+        
+        rem ตั้งค่าปุ่มตัวหนอน (Grave Accent) เฉพาะคีย์บอร์ดไทย
+        if "!SYS_LOCALE!"=="th-TH" (
+            echo reg add "HKCU\Keyboard Layout\Toggle" /v Hotkey /t REG_SZ /d 4 /f ^^^>nul 2^^^>^^^&1
+            echo reg add "HKCU\Keyboard Layout\Toggle" /v "Language Hotkey" /t REG_SZ /d 4 /f ^^^>nul 2^^^>^^^&1
+            echo reg add "HKCU\Keyboard Layout\Toggle" /v "Layout Hotkey" /t REG_SZ /d 3 /f ^^^>nul 2^^^>^^^&1
+        )
+        echo reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce" /v "ITG_Init" /f ^^^>nul 2^^^>^^^&1
+        echo del "%%%%~f0"
+    ) > "!RUNONCE_FILE!"
+    reg add "!REG_ROOT!\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce" /v "ITG_Init" /t REG_SZ /d "!RUNONCE_FILE!" /f >nul 2>&1
+)
 
-reg add "!REG_ROOT!\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce" /v "ITG_Init" /t REG_SZ /d "!RUNONCE_FILE!" /f >nul 2>&1
-reg unload "HKU\DefUser" >nul 2>&1
+if not "!SETUP_MODE!"=="DESKTOP" reg unload "HKU\DefUser" >nul 2>&1
 
 rem ------------------------------------------------------------------------------
 rem [ ZONE 7: USER CREATION & AUTO-LOGIN ]
@@ -221,7 +301,6 @@ echo [PROCESS] Creating Account ^& Enforcing Auto-Login...
 net user "!NEW_USER!" "" /add >nul 2>&1
 net localgroup Administrators "!NEW_USER!" /add >nul 2>&1
 
-rem [FIX PATH] ใช้คำสั่งแบบปลอดภัย ป้องกัน Path แตก
 if exist "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" (
     "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "Set-LocalUser -Name '!NEW_USER!' -PasswordNeverExpires $true" >nul 2>&1
 ) else (
@@ -229,7 +308,7 @@ if exist "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" (
 )
 net accounts /maxpwage:unlimited >nul 2>&1
 
-rem ลบ defaultuser0 เฉพาะโหมด Local เท่านั้น! ห้ามลบในโหมด Online
+rem ลบโปรไฟล์ผีเฉพาะใน Local Mode
 net user defaultuser0 /delete >nul 2>&1
 if exist "C:\Users\defaultuser0" rmdir /s /q "C:\Users\defaultuser0" >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v defaultuser0 /t REG_DWORD /d 0 /f >nul 2>&1
@@ -262,8 +341,6 @@ if "!SETUP_MODE!"=="ONLINE" (
     echo !cw!Press any key to completely close this window and continue Windows Setup.!0!
     echo/
     pause >nul
-    
-    rem [FIX UX] ฆ่าโปรเซส Shell ทั้งหมดทิ้ง เพื่อปิดหน้าต่าง CMD ให้ลูกค้าทันทีโดยไม่ต้องพิมพ์ exit
     taskkill /f /im powershell.exe >nul 2>&1
     taskkill /f /im cmd.exe >nul 2>&1
     exit
@@ -277,7 +354,6 @@ reg add "HKLM\SYSTEM\Setup" /v "OOBEInProgress" /t REG_DWORD /d 0 /f >nul 2>&1
 reg add "HKLM\SYSTEM\Setup" /v "SetupType" /t REG_DWORD /d 0 /f >nul 2>&1
 reg add "HKLM\SYSTEM\Setup" /v "SystemSetupInProgress" /t REG_DWORD /d 0 /f >nul 2>&1
 
-rem [FIX PATH] ย้าย msoobe.exe มาไว้หลังสุด และใช้ pushd
 pushd "%SystemRoot%\System32\oobe"
 if exist "msoobe.exe" start "" /b msoobe.exe >nul 2>&1
 popd
