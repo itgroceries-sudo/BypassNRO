@@ -259,10 +259,14 @@ if "!SETUP_MODE!"=="DESKTOP" (
 
 if "!SETUP_MODE!"=="ONLINE" (
     echo !b!!cg![DONE] Online tweaks successfully injected to Default User!!0!
-    echo !cw!You can now close this window and continue Windows Setup normally.!0!
+    echo !cw!Press any key to completely close this window and continue Windows Setup.!0!
     echo/
-    pause
-    exit /b
+    pause >nul
+    
+    rem [FIX UX] ฆ่าโปรเซส Shell ทั้งหมดทิ้ง เพื่อปิดหน้าต่าง CMD ให้ลูกค้าทันทีโดยไม่ต้องพิมพ์ exit
+    taskkill /f /im powershell.exe >nul 2>&1
+    taskkill /f /im cmd.exe >nul 2>&1
+    exit
 )
 
 echo !b!!cy![FINISHING] Finalizing Setup... Please wait.!0!
