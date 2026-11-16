@@ -26,7 +26,7 @@ set "bgm=!ESC![45m" & set "bgr=!ESC![41m" & set "bgb=!ESC![44m" & set "bgw=!ESC!
 set "sbgm=!ESC![105m"
 
 rem ------------------------------------------------------------------------------
-rem [ ZONE 3: HARDWARE SCANNER ]
+rem [ ZONE 3: HARDWARE SCANNER ] (REPLACED WMIC WITH POWERSHELL CIMINSTANCE)
 rem ------------------------------------------------------------------------------
 set "SYS_CPU="
 for /f "tokens=2*" %%A in ('reg query "HKLM\HARDWARE\DESCRIPTION\System\CentralProcessor\0" /v ProcessorNameString 2^>nul ^| find /i "REG_SZ"') do set "SYS_CPU=%%B"
@@ -39,7 +39,7 @@ if defined SYS_CPU (
 ) else ( set "SYS_CPU=Unknown CPU" )
 
 set "SYS_RAM="
-for /f "tokens=2 delims==" %%A in ('wmic ComputerSystem get TotalPhysicalMemory /Value 2^>nul ^|^| powershell -NoProfile -Command "Write-Output ('TotalPhysicalMemory=' + (Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory)" 2^>nul') do for /f "delims=" %%B in ("%%A") do set "RAM_BYTES=%%B"
+for /f "tokens=2 delims==" %%A in ('powershell -NoProfile -Command "Write-Output ('TotalPhysicalMemory=' + (Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory)" 2^>nul') do for /f "delims=" %%B in ("%%A") do set "RAM_BYTES=%%B"
 if defined RAM_BYTES (
     set "RAM_MB=!RAM_BYTES:~0,-6!"
     set /a "RAM_GB=(RAM_MB + 536) / 1073"
@@ -60,7 +60,7 @@ set "SYS_BOARD=!SYS_MB_MFG! !SYS_MB_PROD!"
 if "!SYS_BOARD!"==" " set "SYS_BOARD=Unknown Board"
 
 set "SYS_VGA="
-for /f "tokens=2 delims==" %%A in ('wmic path win32_VideoController get name /Value 2^>nul ^|^| powershell -NoProfile -Command "Write-Output ('name=' + (Get-CimInstance Win32_VideoController)[0].Name)" 2^>nul') do for /f "delims=" %%B in ("%%A") do set "SYS_VGA=%%B"
+for /f "tokens=2 delims==" %%A in ('powershell -NoProfile -Command "Write-Output ('name=' + (Get-CimInstance Win32_VideoController)[0].Name)" 2^>nul') do for /f "delims=" %%B in ("%%A") do set "SYS_VGA=%%B"
 if defined SYS_VGA ( set "SYS_VGA=!SYS_VGA:(R)=!" & set "SYS_VGA=!SYS_VGA: Corporation=!" )
 if "!SYS_VGA!"=="" set "SYS_VGA=Unknown VGA"
 
@@ -94,7 +94,7 @@ echo/
 echo(      !bgr!!cw! [A] Local Account Mode (OOBE)       !0!     !bgw!!ck! [M] Device Manager                    !0!
 echo(      !bgb!!cw! [O] Online Account Mode (OOBE)      !0!     !bgw!!ck! [K] Disk Management                   !0!
 echo(      !bgw!!ck! [D] Desktop Tweaks (Current User)   !0!     !bgw!!ck! [U] User Accounts (netplwiz)          !0!
-echo(      !b!!cr! [E] Exit Program                      !0!   !bgw!!ck! [R] Registry Editor                   !0!
+echo(      !b!!cr! [E] Exit Program                      !0!     !bgw!!ck! [R] Registry Editor                   !0!
 echo/
 echo( !b!!cw!-----------------------------------------------------------------------------------------------!0!
 echo( !b!!cr!===============================================================================================!0!
@@ -207,7 +207,7 @@ reg add "!REG_ROOT!\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce" /v "ITG_I
 if not "!SETUP_MODE!"=="DESKTOP" reg unload "HKU\DefUser" >nul 2>&1
 
 rem ------------------------------------------------------------------------------
-rem [ ZONE 7: USER CREATION & AUTO-LOGIN ]
+rem [ ZONE 7: USER CREATION & AUTO-LOGIN ] (REMOVED WMIC COMPLETELY)
 rem ------------------------------------------------------------------------------
 if not "!SETUP_MODE!"=="LOCAL" goto SKIP_LOCAL
 
@@ -216,8 +216,8 @@ echo [PROCESS] Creating Account ^& Enforcing Auto-Login...
 net user "!NEW_USER!" "" /add >nul 2>&1
 net localgroup Administrators "!NEW_USER!" /add >nul 2>&1
 
+rem แทนที่ WMIC ด้วย PowerShell เพื่อกำหนดรหัสผ่านแบบไม่มีวันหมดอายุ
 powershell -NoProfile -Command "Set-LocalUser -Name '!NEW_USER!' -PasswordNeverExpires $true" >nul 2>&1
-wmic useraccount where "name='!NEW_USER!'" set PasswordExpires=FALSE >nul 2>&1
 net accounts /maxpwage:unlimited >nul 2>&1
 
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v AutoAdminLogon /t REG_SZ /d "1" /f >nul 2>&1
@@ -259,16 +259,11 @@ echo !b!!cg![DONE] Setup Completed Successfully^^!!0!
 echo !b!!cw!The system will restart and boot to Desktop shortly.!0!
 echo/
 
-rem นับถอยหลังโชว์บนหน้าจอ
-for /l %%i in (5,-1,1) do (
-    echo   Restarting in %%i...
-    ping 127.0.0.1 -n 2 >nul
-)
+rem กลับไปใช้สูตร msoobe.exe แบบดั้งเดิมที่เสถียรที่สุด
+start /b C:\Windows\System32\oobe\msoobe.exe
+shutdown /r /t 10 /f /c "ITG FastOOBE: Finalizing setup. System will boot to Desktop automatically."
 
-echo/
-echo !b!!cy!Rebooting now...!0!
-"%SystemRoot%\System32\shutdown.exe" /r /t 0 /f
-
+rem ดักจับการปิดตัว
 powershell -NoProfile -Command "Restart-Computer -Force" >nul 2>&1
 pause
 exit /b
