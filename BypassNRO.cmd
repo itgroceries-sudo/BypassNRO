@@ -271,20 +271,22 @@ rem บังคับรันสคริปต์สลับภาษาใ�
 if "!SETUP_MODE!"=="LOCAL" (
     if not exist "%SystemRoot%\Setup\Scripts" mkdir "%SystemRoot%\Setup\Scripts" >nul 2>&1
     set "RUNONCE_FILE=%SystemRoot%\Setup\Scripts\ITG_LangFix.cmd"
-    (
-        echo @echo off
-        echo "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "Set-Culture !SYS_LOCALE!" ^^^>nul 2^^^>^^^&1
-        echo "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "Set-WinUserLanguageList -LanguageList !LANG_LIST! -Force" ^^^>nul 2^^^>^^^&1
-        
-        rem ตั้งค่าปุ่มตัวหนอน (Grave Accent) เฉพาะคีย์บอร์ดไทย
-        if "!SYS_LOCALE!"=="th-TH" (
-            echo reg add "HKCU\Keyboard Layout\Toggle" /v Hotkey /t REG_SZ /d 4 /f ^^^>nul 2^^^>^^^&1
-            echo reg add "HKCU\Keyboard Layout\Toggle" /v "Language Hotkey" /t REG_SZ /d 4 /f ^^^>nul 2^^^>^^^&1
-            echo reg add "HKCU\Keyboard Layout\Toggle" /v "Layout Hotkey" /t REG_SZ /d 3 /f ^^^>nul 2^^^>^^^&1
-        )
-        echo reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce" /v "ITG_Init" /f ^^^>nul 2^^^>^^^&1
-        echo del "%%%%~f0"
-    ) > "!RUNONCE_FILE!"
+    
+    rem [FIX] ย้าย >> มาไว้หน้าบรรทัด ป้องกันวงเล็บตีกันและเว้นวรรคเพี้ยน
+    > "!RUNONCE_FILE!" echo @echo off
+    >> "!RUNONCE_FILE!" echo "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "Set-Culture !SYS_LOCALE!" ^>nul 2^>^&1
+    >> "!RUNONCE_FILE!" echo "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "Set-WinUserLanguageList -LanguageList !LANG_LIST! -Force" ^>nul 2^>^&1
+    
+    rem ตั้งค่าปุ่มตัวหนอน (Grave Accent) เฉพาะคีย์บอร์ดไทย
+    if "!SYS_LOCALE!"=="th-TH" (
+        >> "!RUNONCE_FILE!" echo reg add "HKCU\Keyboard Layout\Toggle" /v Hotkey /t REG_SZ /d 4 /f ^>nul 2^>^&1
+        >> "!RUNONCE_FILE!" echo reg add "HKCU\Keyboard Layout\Toggle" /v "Language Hotkey" /t REG_SZ /d 4 /f ^>nul 2^>^&1
+        >> "!RUNONCE_FILE!" echo reg add "HKCU\Keyboard Layout\Toggle" /v "Layout Hotkey" /t REG_SZ /d 3 /f ^>nul 2^>^&1
+    )
+    
+    >> "!RUNONCE_FILE!" echo reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce" /v "ITG_Init" /f ^>nul 2^>^&1
+    >> "!RUNONCE_FILE!" echo del "%%~f0"
+    
     reg add "!REG_ROOT!\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce" /v "ITG_Init" /t REG_SZ /d "!RUNONCE_FILE!" /f >nul 2>&1
 )
 
