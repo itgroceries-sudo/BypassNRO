@@ -2,9 +2,9 @@ Write-Host " [INFO] Downloading ITG FastOOBE Menu..." -ForegroundColor Cyan
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-$CmdUrl = "https://raw.githubusercontent.com/itgroceries-sudo/BypassNRO/main/BypassNRO.cmd"
+# [CRITICAL FIX] ใส่ Parameter สุ่มรหัสด้านหลัง (?t=...) เพื่อทะลวง Cache ของ GitHub ให้ได้ไฟล์สดใหม่ 100% เสมอ!
+$CmdUrl = "https://raw.githubusercontent.com/itgroceries-sudo/BypassNRO/main/BypassNRO.cmd?t=$([guid]::NewGuid())"
 
-# [CRITICAL FIX] เปลี่ยนที่เก็บไฟล์ไปที่ C:\Users\Public ป้องกันบั๊ก defaultuser0 ถูกลบ
 $TempDir = "$env:PUBLIC\ITG_Scripts"
 if (!(Test-Path $TempDir)) { New-Item -ItemType Directory -Force -Path $TempDir | Out-Null }
 $TempCMD = "$TempDir\ITG_FastOOBE.cmd"
